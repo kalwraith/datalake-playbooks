@@ -1,0 +1,52 @@
+---
+- name: Setting kafka producer environment
+  hosts: kafka
+  tasks:
+    - name: install python3.10, python3-pip, venv
+      become: true
+      apt:
+        pkg:
+          - python3.10
+          - python3-pip
+          - python3.10-venv
+        update_cache: true
+
+    - name: create python virtual environment
+      become: true
+      command:
+        cmd: python3 -m venv /src/kafka_venv
+        creates: /src/kafka_venv
+
+    - name: change owner to kafka
+      become: true
+      file:
+        path: /src/kafka_venv
+        owner: kafka
+        group: kafka
+        recurse: yes
+
+    - name: Modify .bashrc
+      become: true
+      lineinfile:
+        path: /home/kafka/.bashrc
+        regex: '^source'
+        line: 'source /src/kafka_venv/bin/activate'
+
+    - name: Modify .bashrc
+      blockinfile:
+        path: /home/kafka/.bashrc
+        block: |
+          source /src/kafka_venv/bin/activate
+          export PYTHONPATH="${PYTHONPATH}:/src/kafka-producer"
+        marker: "# {mark} Setting Python Environment"
+      become: yes
+      tags: python_env
+
+    - name: install libraries
+      become: yes
+      become_user: kafka
+      become_method: sudo
+      pip:
+        requirements: /src/kafka-producer/requirements.txt
+        virtualenv: /src/kafka_venv
+      tags: install_lib

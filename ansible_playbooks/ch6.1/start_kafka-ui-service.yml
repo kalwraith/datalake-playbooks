@@ -1,0 +1,38 @@
+---
+- name: Register Kafka ui service as a daemon
+  hosts: kafka02
+  tasks:
+    - name: kafka-ui.service file
+      blockinfile:
+        path: /etc/systemd/system/kafka-ui.service
+        create: yes
+        block: |
+          [Unit]
+          Description=Kafka UI Service
+          After=network.target docker.service kafka.service
+          
+          [Service]
+          Type=forking
+          WorkingDirectory=/src/kafka-producer/docker_compose/kafka02
+          ExecStart=/usr/bin/docker compose up -d
+          ExecStop=/usr/bin/docker compose down
+          User=zookeeper
+          Group=zookeeper
+          Restart=always
+          
+          [Install]
+          WantedBy=multi-user.target
+        marker: "# {mark} Kafka UI Service"
+      become: yes
+    - name: daemon-reload
+      systemd_service:
+        daemon_reload: yes
+      become: yes
+    - name: Start Kafka UI Service
+      systemd_service:
+        state: started
+        name: kafka-ui
+        enabled: true
+      become: yes
+      tags:
+        - start
